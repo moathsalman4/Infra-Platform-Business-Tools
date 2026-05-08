@@ -1,0 +1,105 @@
+name: Destroy Dev (Manual)
+
+# Only manual trigger — no auto-trigger on push or PR
+# Click "Run workflow" in the Actions tab to invoke
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which dev environment to destroy'
+        required: true
+        type: choice
+        options:
+          - dev/vpc
+          - dev/eks
+      confirm:
+        description: 'Type "destroy" to confirm (case-sensitive)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: root/${{ inputs.target }}
+
+    steps:
+      - name: Validate confirmation
+        working-directory: .
+        run: |
+          if [ "${{ inputs.confirm }}" != "destroy" ]; then
+            echo "❌ Confirmation phrase did not match."
+            echo "You typed: '${{ inputs.confirm }}'"
+            echo "Expected:  'destroy'"
+            exit 1
+          fi
+          echo "✅ Confirmation accepted."
+
+      - name: Print run info
+        working-directory: .
+        run: |
+          echo "🎯 Target: ${{ inputs.target }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "🌿 Branch: ${{ github.ref }}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::665832051028:role/GitHubActionsTerraformIAMrole
+          aws-region: us-east-1
+          role-session-name: gha-destroy-${{ inputs.target }}-${{ github.run_id }}
+
+      - name: Verify AWS auth
+        working-directory: .
+        run: aws sts get-caller-identity
+
+      # NEW: Safety check — don't destroy VPC while EKS still exists
+      # If destroying dev/vpc, ensure no EKS cluster is alive (it would orphan)
+      - name: Safety check (block VPC destroy if EKS exists)
+        if: inputs.target == 'dev/vpc'
+        working-directory: .
+        run: |
+          CLUSTERS=$(aws eks list-clusters --region us-east-1 --query 'clusters' --output json)
+          if echo "$CLUSTERS" | grep -q "main-cluster"; then
+            echo "❌ Cannot destroy VPC: EKS cluster 'main-cluster' still exists."
+            echo "   Destroying VPC first would orphan the cluster's networking."
+            echo ""
+            echo "👉 Destroy dev/eks first, then come back to dev/vpc."
+            exit 1
+          fi
+          echo "✅ No EKS cluster found. Safe to destroy VPC."
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Init
+        run: terraform init
+
+      # NEW: the actual destroy
+      # -auto-approve: required for non-interactive CI
+      # -input=false: never prompt for variables
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false
+
+      - name: Destroy summary
+        if: always()
+        working-directory: .
+        run: |
+          echo "============================================"
+          echo "Destroy result: ${{ job.status }}"
+          echo "Target: ${{ inputs.target }}"
+          echo "Time: $(date -u)"
+          echo "============================================"
