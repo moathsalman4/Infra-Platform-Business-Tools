@@ -27,13 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # NEW: working-directory is dynamic based on the chosen target
     defaults:
       run:
         working-directory: root/${{ inputs.target }}
 
     steps:
-      # Validation runs at workflow root, not in the target dir
       - name: Validate confirmation
         working-directory: .
         run: |
@@ -52,7 +50,6 @@ jobs:
           echo "👤 Triggered by: ${{ github.actor }}"
           echo "🌿 Branch: ${{ github.ref }}"
 
-      # NEW from here down
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -67,6 +64,22 @@ jobs:
         working-directory: .
         run: aws sts get-caller-identity
 
+      # NEW: Safety check — don't destroy VPC while EKS still exists
+      # If destroying dev/vpc, ensure no EKS cluster is alive (it would orphan)
+      - name: Safety check (block VPC destroy if EKS exists)
+        if: inputs.target == 'dev/vpc'
+        working-directory: .
+        run: |
+          CLUSTERS=$(aws eks list-clusters --region us-east-1 --query 'clusters' --output json)
+          if echo "$CLUSTERS" | grep -q "main-cluster"; then
+            echo "❌ Cannot destroy VPC: EKS cluster 'main-cluster' still exists."
+            echo "   Destroying VPC first would orphan the cluster's networking."
+            echo ""
+            echo "👉 Destroy dev/eks first, then come back to dev/vpc."
+            exit 1
+          fi
+          echo "✅ No EKS cluster found. Safe to destroy VPC."
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -74,3 +87,19 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+
+      # NEW: the actual destroy
+      # -auto-approve: required for non-interactive CI
+      # -input=false: never prompt for variables
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false
+
+      - name: Destroy summary
+        if: always()
+        working-directory: .
+        run: |
+          echo "============================================"
+          echo "Destroy result: ${{ job.status }}"
+          echo "Target: ${{ inputs.target }}"
+          echo "Time: $(date -u)"
+          echo "============================================"
