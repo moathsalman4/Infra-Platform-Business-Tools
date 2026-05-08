@@ -45,8 +45,8 @@ output "ebs_csi_role_arn" {
 }
 
 output "cluster_security_group_id" {
-  description = "Security group ID for the EKS control plane"
-  value       = aws_security_group.cluster_sg.id
+  description = "EKS auto-created cluster security group ID"
+  value       = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
 }
 
 output "node_security_group_id" {
