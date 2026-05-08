@@ -1,0 +1,45 @@
+name: Destroy Dev (Manual)
+
+# Only manual trigger — no auto-trigger on push or PR
+# Click "Run workflow" in the Actions tab to invoke
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which dev environment to destroy'
+        required: true
+        type: choice
+        options:
+          - dev/vpc
+          - dev/eks
+      confirm:
+        description: 'Type "destroy" to confirm (case-sensitive)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "destroy" ]; then
+            echo "❌ Confirmation phrase did not match."
+            echo "You typed: '${{ inputs.confirm }}'"
+            echo "Expected:  'destroy'"
+            exit 1
+          fi
+          echo "✅ Confirmation accepted."
+
+      - name: Print run info
+        run: |
+          echo "🎯 Target: ${{ inputs.target }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "🌿 Branch: ${{ github.ref }}"
