@@ -32,6 +32,16 @@ jobs:
         working-directory: root/${{ inputs.target }}
 
     steps:
+      - name: Compute session name
+        id: session
+        working-directory: .
+        run: |
+          SAFE_TARGET="${{ inputs.target }}"
+          SAFE_TARGET="${SAFE_TARGET//\//-}"
+          echo "name=gha-destroy-${SAFE_TARGET}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "Computed session name: gha-destroy-${SAFE_TARGET}-${{ github.run_id }}"
+    
+    steps:
       - name: Validate confirmation
         working-directory: .
         run: |
@@ -58,7 +68,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::665832051028:role/GitHubActionsTerraformIAMrole
           aws-region: us-east-1
-          role-session-name: gha-destroy-${{ inputs.target }}-${{ github.run_id }}
+          role-session-name: ${{ steps.session.outputs.name }}
 
       - name: Verify AWS auth
         working-directory: .
