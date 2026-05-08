@@ -27,8 +27,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    # NEW: working-directory is dynamic based on the chosen target
+    defaults:
+      run:
+        working-directory: root/${{ inputs.target }}
+
     steps:
+      # Validation runs at workflow root, not in the target dir
       - name: Validate confirmation
+        working-directory: .
         run: |
           if [ "${{ inputs.confirm }}" != "destroy" ]; then
             echo "❌ Confirmation phrase did not match."
@@ -39,7 +46,31 @@ jobs:
           echo "✅ Confirmation accepted."
 
       - name: Print run info
+        working-directory: .
         run: |
           echo "🎯 Target: ${{ inputs.target }}"
           echo "👤 Triggered by: ${{ github.actor }}"
           echo "🌿 Branch: ${{ github.ref }}"
+
+      # NEW from here down
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::665832051028:role/GitHubActionsTerraformIAMrole
+          aws-region: us-east-1
+          role-session-name: gha-destroy-${{ inputs.target }}-${{ github.run_id }}
+
+      - name: Verify AWS auth
+        working-directory: .
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Init
+        run: terraform init
