@@ -41,7 +41,6 @@ jobs:
           echo "name=gha-destroy-${SAFE_TARGET}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
           echo "Computed session name: gha-destroy-${SAFE_TARGET}-${{ github.run_id }}"
     
-    steps:
       - name: Validate confirmation
         working-directory: .
         run: |
