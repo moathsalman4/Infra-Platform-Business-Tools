@@ -262,5 +262,3 @@ Examples:
 ## Contact / Owner
 
 Repo owner: `@moathsalman4`
-AWS account: `665832051028`
-Region: `us-east-1`
