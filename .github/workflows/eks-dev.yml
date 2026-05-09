@@ -7,12 +7,14 @@ on:
       - 'modules/eks/**'
       - 'root/dev/eks/**'
       - '.github/workflows/eks-dev.yml'
+      - '!**/*.md'
   push:
     branches: [main]
     paths:
       - 'modules/eks/**'
       - 'root/dev/eks/**'
       - '.github/workflows/eks-dev.yml'
+      - '!**/*.md'
 
 permissions:
   id-token: write

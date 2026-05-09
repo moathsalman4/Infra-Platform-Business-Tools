@@ -7,12 +7,14 @@ on:
       - 'modules/vpc/**'
       - 'root/dev/vpc/**'
       - '.github/workflows/vpc-dev.yml'
+      - '!**/*.md'
   push:
     branches: [main]
     paths:
       - 'modules/vpc/**'
       - 'root/dev/vpc/**'
       - '.github/workflows/vpc-dev.yml'
+      - '!**/*.md'
 
 permissions:
   id-token: write
