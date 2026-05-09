@@ -25,6 +25,7 @@ jobs:
   terraform:
     name: Terraform
     runs-on: ubuntu-latest
+    environment: dev
     timeout-minutes: 45
 
     defaults:
