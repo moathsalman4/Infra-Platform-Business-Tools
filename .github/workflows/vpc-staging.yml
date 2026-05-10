@@ -1,0 +1,134 @@
+name: VPC Staging
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'modules/vpc/**'
+      - 'root/staging/vpc/**'
+      - '.github/workflows/vpc-staging.yml'
+      - '!**/*.md'
+  push:
+    branches: [main]
+    paths:
+      - 'modules/vpc/**'
+      - 'root/staging/vpc/**'
+      - '.github/workflows/vpc-staging.yml'
+      - '!**/*.md'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write   # NEW: required to post comments on PRs
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    environment: staging
+
+    defaults:
+      run:
+        working-directory: root/staging/vpc
+
+    steps:
+      - name: Print event info
+        working-directory: .
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Actor: ${{ github.actor }}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::665832051028:role/GitHubActionsTerraformIAMrole
+          aws-region: us-east-1
+          role-session-name: gha-vpc-staging-${{ github.run_id }}
+
+      - name: Verify AWS auth
+        working-directory: .
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Format Check
+        id: fmt           # NEW: id so we can reference outcome later
+        working-directory: .
+        run: terraform fmt -check -recursive
+        continue-on-error: true   # NEW: don't block plan on fmt issues
+
+      - name: Terraform Init
+        id: init          # NEW: id for status reporting
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate      # NEW: id for status reporting
+        run: terraform validate
+
+      # CHANGED: id added, continue-on-error so we still post comment if plan fails
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -input=false -no-color
+        continue-on-error: true
+
+      # NEW: post the plan as a PR comment, but only on PR events
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN: ${{ steps.plan.outputs.stdout }}
+        with:
+          script: |
+            const fmt = '${{ steps.fmt.outcome }}';
+            const init = '${{ steps.init.outcome }}';
+            const validate = '${{ steps.validate.outcome }}';
+            const plan = '${{ steps.plan.outcome }}';
+
+            const planOutput = process.env.PLAN || '(no plan output)';
+            const truncated = planOutput.length > 60000
+              ? planOutput.substring(0, 60000) + '\n\n... (truncated, see Actions log for full output)'
+              : planOutput;
+
+            const body = `### Terraform VPC Staging Plan 🛠️
+
+            | Step | Result |
+            | --- | --- |
+            | Format | \`${fmt}\` |
+            | Init | \`${init}\` |
+            | Validate | \`${validate}\` |
+            | Plan | \`${plan}\` |
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`hcl
+            ${truncated}
+            \`\`\`
+
+            </details>
+
+            *Triggered by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      # NEW: fail the whole workflow if plan failed
+      # We needed continue-on-error above so the comment could still post,
+      # but now we re-fail explicitly so the PR shows red status check
+      - name: Plan status
+        if: github.event_name == 'pull_request' && steps.plan.outcome == 'failure'
+        run: exit 1
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -input=false
