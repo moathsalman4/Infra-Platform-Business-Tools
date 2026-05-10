@@ -13,3 +13,9 @@ variable "subnet_count" {
   default     = 3
   description = "Number of public/private subnet pairs to create across AZs"
 }
+
+variable "enable_nat" {
+  type        = bool
+  default     = false
+  description = "enables NAT gateway for private subnet to internet (egress)"
+}

@@ -1,6 +1,6 @@
 resource "aws_autoscaling_group" "workers" {
   name_prefix         = "${var.workers_name}-asg-"
-  vpc_zone_identifier = var.subnet_ids
+  vpc_zone_identifier = coalesce(var.worker_subnet_ids, var.subnet_ids)
   min_size            = var.min_size
   max_size            = var.max_size
   desired_capacity    = var.desired_capacity
