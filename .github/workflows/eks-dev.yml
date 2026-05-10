@@ -1,20 +1,23 @@
 name: EKS Dev
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
-      - 'modules/eks/**'
       - 'root/dev/eks/**'
       - '.github/workflows/eks-dev.yml'
       - '!**/*.md'
   push:
     branches: [main]
     paths:
-      - 'modules/eks/**'
       - 'root/dev/eks/**'
       - '.github/workflows/eks-dev.yml'
       - '!**/*.md'
+
+concurrency:
+  group: terraform-dev-${{ github.ref }}
+  cancel-in-progress: false      
 
 permissions:
   id-token: write
