@@ -14,6 +14,13 @@ variable "subnet_ids" {
   description = "List of subnet IDs where the EKS cluster ENIs will be placed"
 }
 
+variable "worker_subnet_ids" {
+  type     = list(string)
+  default  = null
+  nullable = true
+  description = "for the ASG, optional, falls back to subnet_ids"
+}
+
 variable "workers_name" {
   description = "The name of the EKS worker nodes."
   type        = string

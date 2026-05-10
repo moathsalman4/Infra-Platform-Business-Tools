@@ -2,6 +2,8 @@
 # Local Terraform working dirs (provider binaries, module cache)
 **/.terraform/
 **/.terraform.lock.hcl.bak
+# Module-level lockfiles (modules don't init independently in production)
+modules/*/.terraform.lock.hcl
 
 # Terraform state files (we use S3 backend, but defensive)
 *.tfstate

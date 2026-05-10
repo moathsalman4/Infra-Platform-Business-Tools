@@ -54,6 +54,7 @@ resource "aws_internet_gateway" "main_igw" {
   tags = {
     Name = "${var.env_name}-igw"
   }
+  depends_on = [aws_vpc.main_vpc]
 }
 
 resource "aws_route_table" "public_rt" {
