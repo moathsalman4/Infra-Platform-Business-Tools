@@ -1,20 +1,23 @@
 name: EKS Staging
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
-      - 'modules/eks/**'
       - 'root/staging/eks/**'
       - '.github/workflows/eks-staging.yml'
       - '!**/*.md'
   push:
     branches: [main]
     paths:
-      - 'modules/eks/**'
       - 'root/staging/eks/**'
       - '.github/workflows/eks-staging.yml'
       - '!**/*.md'
+
+concurrency:
+  group: terraform-staging-${{ github.ref }}
+  cancel-in-progress: false       
 
 permissions:
   id-token: write

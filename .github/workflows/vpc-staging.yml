@@ -1,20 +1,23 @@
 name: VPC Staging
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
-      - 'modules/vpc/**'
       - 'root/staging/vpc/**'
       - '.github/workflows/vpc-staging.yml'
       - '!**/*.md'
   push:
     branches: [main]
     paths:
-      - 'modules/vpc/**'
       - 'root/staging/vpc/**'
       - '.github/workflows/vpc-staging.yml'
       - '!**/*.md'
+
+concurrency:
+  group: terraform-staging-${{ github.ref }}
+  cancel-in-progress: false      
 
 permissions:
   id-token: write
