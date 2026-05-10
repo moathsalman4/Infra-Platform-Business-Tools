@@ -15,9 +15,9 @@ variable "subnet_ids" {
 }
 
 variable "worker_subnet_ids" {
-  type     = list(string)
-  default  = null
-  nullable = true
+  type        = list(string)
+  default     = null
+  nullable    = true
   description = "for the ASG, optional, falls back to subnet_ids"
 }
 

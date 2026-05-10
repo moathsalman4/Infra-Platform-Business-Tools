@@ -84,8 +84,8 @@ variable "on_demand_percentage_above_base_capacity" {
 }
 
 variable "worker_subnet_ids" {
-  type     = list(string)
-  default  = null
-  nullable = true
+  type        = list(string)
+  default     = null
+  nullable    = true
   description = "for the ASG, optional, falls back to subnet_ids"
 }

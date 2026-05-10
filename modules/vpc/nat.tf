@@ -23,8 +23,8 @@ resource "aws_nat_gateway" "main_nat" {
 }
 
 resource "aws_route" "private_rt_to_nat" {
-  count                     = var.enable_nat ? 1 : 0
-  route_table_id            = aws_route_table.private_rt.id
-  destination_cidr_block    = "0.0.0.0/0"
-  nat_gateway_id = aws_nat_gateway.main_nat[0].id
+  count                  = var.enable_nat ? 1 : 0
+  route_table_id         = aws_route_table.private_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main_nat[0].id
 }

@@ -3,7 +3,7 @@ module "vpc" {
   cidr_block   = var.cidr_block
   env_name     = var.env_name
   subnet_count = var.subnet_count
-  enable_nat = var.enable_nat
+  enable_nat   = var.enable_nat
 
 
 }
